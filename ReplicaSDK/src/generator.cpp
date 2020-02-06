@@ -1,11 +1,28 @@
 // Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+// STL
+#include <random>
+#include <cmath>
+
 #include <EGL.h>
 #include <PTexLib.h>
 #include <pangolin/image/image_convert.h>
 
 #include "MirrorRenderer.h"
 
+struct Room{
+  double x_min_, x_max_;
+  double y_min_, y_max_;
+  double z_min_, z_max_;
+  Room(double x_min, double x_max, double y_min, double y_max, double z_min, double z_max)
+    : x_min_(x_min), x_max_(x_max), y_min_(y_min), y_max_(y_max), z_min_(z_min), z_max_(z_max) {}
+  Room(double x_min, double x_max, double y_min, double y_max, double z)
+    : x_min_(x_min), x_max_(x_max), y_min_(y_min), y_max_(y_max), z_min_(z), z_max_(z) {}
+  double area() {return (x_max_ - x_min_) * (y_max_ - y_min_);}
+};
+
 int main(int argc, char* argv[]) {
+  std::default_random_engine generator;
+
   ASSERT(argc == 1 || argc == 2, "Usage: ./ReplicaGenerator /path/to/replica_folder [/path/to/output]");
 
   std::vector<std::string> scenes = {"apartment_0", 
@@ -25,6 +42,10 @@ int main(int argc, char* argv[]) {
                                      "room_0",
                                      "room_1",
                                      "room_2"};
+  
+  std::map<std::string, std::vector<Room>> scene_to_rooms;
+  scene_to_rooms["apartment_1"].emplace_back(-0.9, 0.9, 0.5, 4.56, 0.28);
+  scene_to_rooms["apartment_1"].emplace_back(3.5, 6.75, 4.35, 5.9, 0.28);
 
   std::string folder(argv[1]);
 
@@ -35,8 +56,8 @@ int main(int argc, char* argv[]) {
   ASSERT(pangolin::FileExists(atlasFolder));
   ASSERT(pangolin::FileExists(surfaceFile));
 
-  const int width = 640;
-  const int height = 480;
+  const int width = 1920;
+  const int height = 1080;
   bool renderDepth = true;
   float depthScale = 65535.0f * 0.1f;
 
@@ -68,7 +89,7 @@ int main(int argc, char* argv[]) {
         (height - 1.0f) / 2.0f,
         0.1f,
         100.0f),
-    pangolin::ModelViewLookAtRDF(0, 0, 4, 0, 0, 0, 0, 1, 0));
+    pangolin::ModelViewLookAtRDF(0, 0, 0, 1.5, 1.5, 0, 0, 0, 1));
 
   // Start at some origin
   Eigen::Matrix4d T_camera_world = s_cam.GetModelViewMatrix();
@@ -183,8 +204,24 @@ int main(int argc, char* argv[]) {
 
     // Move the camera
     T_camera_world = T_camera_world * T_new_old.inverse();
+    std::uniform_int_distribution<size_t> room_index_generator(0, scene_to_rooms[scenes[1]].size()-1);
+    int room_index = room_index_generator(generator);
+    const auto& room = scene_to_rooms[scenes[1]][room_index];
+    std::uniform_real_distribution<double> x_generator(room.x_min_,room.x_max_);
+    std::uniform_real_distribution<double> y_generator(room.y_min_,room.y_max_);
+    std::uniform_real_distribution<double> angle_generator(0,2*M_PI);
+    std::uniform_real_distribution<double> la_z_offset_generator(-1.0,1.0);
 
-    s_cam.GetModelViewMatrix() = T_camera_world;
+    double x = x_generator(generator);
+    double y = y_generator(generator);
+    double z = 0;
+    double angle = angle_generator(generator);
+    double la_z_offset = la_z_offset_generator(generator);
+
+
+    s_cam.SetModelViewMatrix(pangolin::ModelViewLookAtRDF(x, y, z, x+std::cos(angle), y+std::sin(angle), z+la_z_offset, 0, 0, 1));
+
+    // s_cam.GetModelViewMatrix() = T_camera_world;
   }
   std::cout << "\rRendering frame " << numFrames << "/" << numFrames << "... done" << std::endl;
 
