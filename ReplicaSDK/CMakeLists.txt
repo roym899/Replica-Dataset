@@ -56,3 +56,14 @@ target_link_libraries(ReplicaRenderer
                       ptex
                       stdc++fs
 )
+
+add_executable(ReplicaGenerator src/generator.cpp src/MirrorSurface.cpp)
+
+target_link_libraries(ReplicaGenerator
+                      ${Pangolin_LIBRARIES}
+                      ${dl_LIBRARIES}
+                      GL
+                      GLEW
+                      ptex
+                      stdc++fs
+)
