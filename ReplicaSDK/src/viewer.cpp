@@ -150,6 +150,14 @@ int main(int argc, char* argv[]) {
       }
     }
 
+
+    const auto T_world_camera = s_cam.GetModelViewMatrix().Inverse();
+    const double x = T_world_camera(0,3);
+    const double y = T_world_camera(1,3);
+    const double z = T_world_camera(2,3);
+
+    std::cout << "Current position: " << x << " " << y << " " << z << std::endl;
+
     pangolin::FinishFrame();
   }
 
